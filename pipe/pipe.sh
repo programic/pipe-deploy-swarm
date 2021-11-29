@@ -15,12 +15,12 @@ source "$(dirname "${0}")/common.sh"
 : ${AWS_DEFAULT_REGION?"You need to set the AWS_DEFAULT_REGION environment variable."}
 : ${BITBUCKET_DEPLOYMENT_ENVIRONMENT?"You need to set the BITBUCKET_DEPLOYMENT_ENVIRONMENT environment variable."}
 
-# Prefix project name with Docker registry url, so we can push the images to the registry from the docker-compose.yml file.
-export PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}"
-
 # Set environment vars for build, push and deployment
 export PROJECT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}_${PROJECT_ENVIRONMENT}"
+
+# Now prefix project name with Docker registry url, so we can push the images to the registry from the docker-compose.yml file.
+export PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}"
 
 build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
