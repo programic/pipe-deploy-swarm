@@ -15,7 +15,7 @@ script:
 
 # Implementation example
 The Docker images are built from the docker-compose.yml file. Below is an example of what this file might look like, 
-to automatically build and deploy docker images based on your Bitbucklet pipeline.
+to automatically build and deploy Docker images based on your Bitbucklet pipeline.
 
 ```yaml
 version: '3.8'
