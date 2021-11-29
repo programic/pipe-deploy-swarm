@@ -26,9 +26,10 @@ build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
   docker-compose build
-  docker-compose push
+  success "Successfully built"
 
-  success "Docker images have been successfully built and pushed"
+  docker-compose push
+  success "Successfully pushed to registry"
 }
 
 setup_ssh() {
