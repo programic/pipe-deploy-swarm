@@ -27,8 +27,8 @@ export PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}"
 compose_files=(docker-compose.yml)
 
 get_compose_files() {
-  if [[ -f "docker-compose.swarm.yml" ]]; then
-    compose_files+=(docker-compose.swarm.yml)
+  if [[ -f "docker-compose.stack.yml" ]]; then
+    compose_files+=(docker-compose.stack.yml)
   fi
 }
 
