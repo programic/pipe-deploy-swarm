@@ -21,9 +21,18 @@ to automatically build and deploy Docker images based on your Bitbucklet pipelin
 version: '3.8'
 services:
 
-  nginx:
-    image: ${PROJECT_NAME}-nginx:${PROJECT_ENVIRONMENT}
+  php:
+    image: ${PROJECT_NAME}-php:${PROJECT_ENVIRONMENT}
     build:
       context: .
-      dockerfile: ./dockerfiles/nginx.dockerfile
+      dockerfile: ./dockerfiles/php.dockerfile
+    secrets:
+      - source: laravel-env
+        target: /var/www/.env
+
+secrets:
+  laravel-env:
+    file: .laravel.env
+    # Make the secret unique so that stack deploy doesn't fail
+    name: ${COMPOSE_PROJECT_NAME}_laravel-env-${TIMESTAMP}
 ```
