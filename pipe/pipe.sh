@@ -35,10 +35,10 @@ get_compose_files() {
 build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
-  docker-compose ${compose_files[@]/#/-f } build
+  docker-compose -f docker-compose.yml build
   success "Successfully built"
 
-  docker-compose ${compose_files[@]/#/-f } push
+  docker-compose -f docker-compose.yml push
   success "Successfully pushed to registry"
 }
 
