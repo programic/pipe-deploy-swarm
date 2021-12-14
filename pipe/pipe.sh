@@ -23,22 +23,13 @@ export TIMESTAMP=$(date +%s)
 # Now prefix project name with Docker registry url, so we can push the images to the registry from the docker-compose.yml file.
 export PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}"
 
-# Default compose file
-compose_files=(docker-compose.yml)
-
-get_compose_files() {
-  if [[ -f "docker-compose.stack.yml" ]]; then
-    compose_files+=(docker-compose.stack.yml)
-  fi
-}
-
 build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
-  docker-compose -f docker-compose.yml build
+  docker-compose build
   success "Successfully built"
 
-  docker-compose -f docker-compose.yml push
+  docker-compose push
   success "Successfully pushed to registry"
 }
 
@@ -68,14 +59,18 @@ setup_ssh() {
 deploy() {
   DOCKER_HOST=${DOCKER_SWARM_HOST}
 
+  params=(--compose-file docker-compose.yml)
+  if [[ -f "docker-compose.stack.yml" ]]; then
+    params+=(--compose-file docker-compose.stack.yml)
+  fi
+
   docker stack deploy --with-registry-auth --prune \
-    ${compose_files[@]/#/--compose-file } \
+    "${params[@]}" \
     ${COMPOSE_PROJECT_NAME}
 
   success "Cheers! Successfully deployed"
 }
 
-get_compose_files
 build_push
 setup_ssh
 deploy
