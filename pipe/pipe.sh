@@ -59,13 +59,9 @@ setup_ssh() {
 deploy() {
   DOCKER_HOST=${DOCKER_SWARM_HOST}
 
-  params=(--compose-file docker-compose.yml)
-  if [[ -f "docker-compose.stack.yml" ]]; then
-    params+=(--compose-file docker-compose.stack.yml)
-  fi
-
   docker stack deploy --with-registry-auth --prune \
-    "${params[@]}" \
+    --compose-file docker-compose.yml \
+    --compose-file docker-compose.stack.yml \
     ${COMPOSE_PROJECT_NAME}
 
   success "Cheers! Successfully deployed"
