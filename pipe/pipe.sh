@@ -23,10 +23,12 @@ build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
   # Now prefix project name with Docker registry url, so we can build and push the images to the registry from the docker-compose.yml file.
-  PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" docker-compose build
+  PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
+    docker-compose build
   success "Successfully built"
 
-  PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" docker-compose push
+  PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
+    docker-compose push
   success "Successfully pushed to registry"
 }
 
@@ -53,8 +55,16 @@ setup_ssh() {
   success "SSH key has been successfully set"
 }
 
+valid_sentry_credentials() {
+  if [[ -n "${SENTRY_RELEASE}" ]] && [[ -n "${SENTRY_ORG}" ]] && [[ -n "${SENTRY_AUTH_TOKEN}" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
 create_sentry_release() {
-  [[ -z "${SENTRY_RELEASE}" ]] && [[ -z "${SENTRY_ORG}" ]] && [[ -z "${SENTRY_AUTH_TOKEN}" ]] && return
+  valid_sentry_credentials && return
 
   sentry-cli releases new -p "${PROJECT_NAME}" "${SENTRY_RELEASE}"
   success "Created new Sentry release"
@@ -64,7 +74,7 @@ create_sentry_release() {
 }
 
 finalize_sentry_release() {
-  [[ -z "${SENTRY_RELEASE}" ]] && [[ -z "${SENTRY_ORG}" ]] && [[ -z "${SENTRY_AUTH_TOKEN}" ]] && return
+  valid_sentry_credentials && return
 
   sentry-cli releases finalize "${SENTRY_RELEASE}"
   success "Sentry release successfully finalized"
@@ -73,10 +83,12 @@ finalize_sentry_release() {
 deploy() {
   create_sentry_release
 
-  PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" DOCKER_HOST=${DOCKER_SWARM_HOST} docker stack deploy --with-registry-auth --prune \
-    --compose-file docker-compose.yml \
-    --compose-file docker-compose.stack.yml \
-    ${COMPOSE_PROJECT_NAME}
+  PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
+    DOCKER_HOST=${DOCKER_SWARM_HOST} \
+      docker stack deploy --with-registry-auth --prune \
+        --compose-file docker-compose.yml \
+        --compose-file docker-compose.stack.yml \
+        ${COMPOSE_PROJECT_NAME}
 
   success "Cheers! Successfully deployed"
 
