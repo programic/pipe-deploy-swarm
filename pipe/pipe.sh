@@ -19,6 +19,31 @@ export PROJECT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}_${PROJECT_ENVIRONMENT}"
 export TIMESTAMP=$(date +%s)
 
+valid_sentry_credentials() {
+  if [[ -n "${SENTRY_RELEASE}" ]] && [[ -n "${SENTRY_ORG}" ]] && [[ -n "${SENTRY_AUTH_TOKEN}" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+create_sentry_release() {
+  valid_sentry_credentials && return
+
+  sentry-cli releases new -p "${PROJECT_NAME}" "${SENTRY_RELEASE}"
+  success "Created new Sentry release"
+
+  sentry-cli releases set-commits --auto "${SENTRY_RELEASE}"
+  success "Associate commits with the release"
+}
+
+finalize_sentry_release() {
+  valid_sentry_credentials && return
+
+  sentry-cli releases finalize "${SENTRY_RELEASE}"
+  success "Sentry release successfully finalized"
+}
+
 build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
@@ -26,6 +51,8 @@ build_push() {
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     docker-compose build
   success "Successfully built"
+
+  create_sentry_release
 
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     docker-compose push
@@ -55,34 +82,7 @@ setup_ssh() {
   success "SSH key has been successfully set"
 }
 
-valid_sentry_credentials() {
-  if [[ -n "${SENTRY_RELEASE}" ]] && [[ -n "${SENTRY_ORG}" ]] && [[ -n "${SENTRY_AUTH_TOKEN}" ]]; then
-    return 1
-  fi
-
-  return 0
-}
-
-create_sentry_release() {
-  valid_sentry_credentials && return
-
-  sentry-cli releases new -p "${PROJECT_NAME}" "${SENTRY_RELEASE}"
-  success "Created new Sentry release"
-
-  sentry-cli releases set-commits --auto "${SENTRY_RELEASE}"
-  success "Associate commits with the release"
-}
-
-finalize_sentry_release() {
-  valid_sentry_credentials && return
-
-  sentry-cli releases finalize "${SENTRY_RELEASE}"
-  success "Sentry release successfully finalized"
-}
-
 deploy() {
-  create_sentry_release
-
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     DOCKER_HOST=${DOCKER_SWARM_HOST} \
       docker stack deploy --with-registry-auth --prune \
