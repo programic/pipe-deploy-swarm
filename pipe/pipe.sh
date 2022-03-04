@@ -52,11 +52,11 @@ build_push() {
     docker-compose build
   success "Successfully built"
 
-  create_sentry_release
-
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     docker-compose push
   success "Successfully pushed to registry"
+
+  create_sentry_release
 }
 
 setup_ssh() {
