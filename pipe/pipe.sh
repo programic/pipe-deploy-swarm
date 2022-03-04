@@ -80,6 +80,5 @@ create_sentry_release() {
 
 build_push
 setup_ssh
-
 deploy
 create_sentry_release
