@@ -19,31 +19,6 @@ export PROJECT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}_${PROJECT_ENVIRONMENT}"
 export TIMESTAMP=$(date +%s)
 
-valid_sentry_credentials() {
-  if [[ -n "${SENTRY_RELEASE}" ]] && [[ -n "${SENTRY_ORG}" ]] && [[ -n "${SENTRY_AUTH_TOKEN}" ]]; then
-    return 1
-  fi
-
-  return 0
-}
-
-create_sentry_release() {
-  valid_sentry_credentials && return
-
-  sentry-cli releases new -p "${PROJECT_NAME}" "${SENTRY_RELEASE}"
-  success "Created new Sentry release"
-
-  sentry-cli releases set-commits --auto "${SENTRY_RELEASE}"
-  success "Associate commits with the release"
-}
-
-finalize_sentry_release() {
-  valid_sentry_credentials && return
-
-  sentry-cli releases finalize "${SENTRY_RELEASE}"
-  success "Sentry release successfully finalized"
-}
-
 build_push() {
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
@@ -55,8 +30,6 @@ build_push() {
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     docker-compose push
   success "Successfully pushed to registry"
-
-  create_sentry_release
 }
 
 setup_ssh() {
@@ -91,10 +64,22 @@ deploy() {
         ${COMPOSE_PROJECT_NAME}
 
   success "Cheers! Successfully deployed"
+}
 
-  finalize_sentry_release
+create_sentry_release() {
+  if [[ -z "${SENTRY_RELEASE}" ]] || [[ -z "${SENTRY_ORG}" ]] || [[ -z "${SENTRY_AUTH_TOKEN}" ]]; then
+    return
+  fi
+
+  sentry-cli releases new --finalize --project "${PROJECT_NAME}" "${SENTRY_RELEASE}"
+  success "Created new Sentry release"
+
+  sentry-cli releases set-commits --auto "${SENTRY_RELEASE}"
+  success "Associate commits with the release"
 }
 
 build_push
 setup_ssh
+
 deploy
+create_sentry_release
