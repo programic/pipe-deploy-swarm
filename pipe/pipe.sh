@@ -74,7 +74,7 @@ create_sentry_release() {
   sentry-cli releases new --finalize --project "${PROJECT_NAME}" "${SENTRY_RELEASE}"
   success "Created new Sentry release"
 
-  sentry-cli releases set-commits --auto "${SENTRY_RELEASE}"
+  sentry-cli releases set-commits --ignore-empty --ignore-missing --auto "${SENTRY_RELEASE}"
   success "Associate commits with the release"
 }
 
