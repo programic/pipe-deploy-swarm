@@ -18,15 +18,19 @@ source "$(dirname "${0}")/common.sh"
 export PROJECT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}_${PROJECT_ENVIRONMENT}"
 export TIMESTAMP=$(date +%s)
+export DOCKER_BUILDKIT=0
 
 build_push() {
+  info "Login..."
   aws ecr get-login-password | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_URL}
 
   # Now prefix project name with Docker registry url, so we can build and push the images to the registry from the docker-compose.yml file.
+  info "Building..."
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     docker-compose build
   success "Successfully built"
 
+  info "Push..."
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     docker-compose push
   success "Successfully pushed to registry"
@@ -56,6 +60,7 @@ setup_ssh() {
 }
 
 deploy() {
+  info "Deploy..."
   PROJECT_NAME="${DOCKER_REGISTRY_URL}/${PROJECT_NAME}" \
     DOCKER_HOST=${DOCKER_SWARM_HOST} \
       docker stack deploy --with-registry-auth --prune \
@@ -71,6 +76,8 @@ create_sentry_release() {
     return
   fi
 
+  info "Create Sentry release..."
+
   sentry-cli releases new --finalize --project "${PROJECT_NAME}" "${SENTRY_RELEASE}"
   success "Created new Sentry release"
 
@@ -78,7 +85,32 @@ create_sentry_release() {
   success "Associate commits with the release"
 }
 
+set_firewall() {
+  if [[ -z "${DIGITALOCEAN_ACCESS_TOKEN}" ]] || [[ -z "${DIGITALOCEAN_FIREWALL_ID}" ]]; then
+    return
+  fi
+
+  info "Set firewall rule..."
+
+  export PUBLIC_IP=$(curl --silent "https://api.ipify.org")
+  doctl compute firewall add-rules ${DIGITALOCEAN_FIREWALL_ID} --inbound-rules protocol:tcp,ports:22,address:${PUBLIC_IP} --access-token ${DIGITALOCEAN_ACCESS_TOKEN}
+  success "IP ${PUBLIC_IP} whitelisted"
+}
+
+remove_firewall() {
+  if [[ -z "${DIGITALOCEAN_ACCESS_TOKEN}" ]] || [[ -z "${PUBLIC_IP}" ]] || [[ -z "${DIGITALOCEAN_FIREWALL_ID}" ]]; then
+    return
+  fi
+
+  info "Remove firewall rule..."
+
+  doctl compute firewall remove-rules ${DIGITALOCEAN_FIREWALL_ID} --inbound-rules protocol:tcp,ports:22,address:${PUBLIC_IP} --access-token ${DIGITALOCEAN_ACCESS_TOKEN}
+  success "IP ${PUBLIC_IP} removed"
+}
+
 build_push
 setup_ssh
+set_firewall
 deploy
+remove_firewall
 create_sentry_release
